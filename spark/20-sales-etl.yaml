@@ -11,6 +11,7 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 2
+      activeDeadlineSeconds: 900
       template:
         metadata:
           labels:
@@ -53,7 +54,7 @@ spec:
                 - --conf=spark.executor.instances=1
                 - --conf=spark.executor.cores=1
                 - --conf=spark.executor.memory=512m
-                - --conf=spark.local.dir=/tmp
+                - --conf=spark.local.dir=/var/spark-local
                 - --conf=spark.authenticate=true
                 - --conf=spark.network.crypto.enabled=true
                 - --conf=spark.ui.killEnabled=false
@@ -106,10 +107,14 @@ spec:
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp
+                - name: spark-local
+                  mountPath: /var/spark-local
                 - name: pod-template
                   mountPath: /opt/spark/pod-template
           volumes:
             - name: tmp
+              emptyDir: {}
+            - name: spark-local
               emptyDir: {}
             - name: pod-template
               configMap:

@@ -88,6 +88,7 @@ jobs:
         env:
           REF: ${{ env.IMAGE }}@${{ steps.push.outputs.digest }}
         run: |
-          cosign sign --yes "$REF"
-          cosign attest --yes --type spdxjson --predicate sbom.spdx.json "$REF"
+          retry() { for i in 1 2 3 4 5; do "$@" && return 0; sleep $((i * 15)); done; return 1; }
+          retry cosign sign --yes "$REF"
+          retry cosign attest --yes --type spdxjson --predicate sbom.spdx.json "$REF"
           echo "Obraz: $REF" >> "$GITHUB_STEP_SUMMARY"
