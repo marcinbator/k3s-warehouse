@@ -1,0 +1,106 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-seed
+  namespace: ingest
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app: minio-seed
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: make-bucket
+          image: &mc cgr.dev/chainguard/minio-client@sha256:d8a93c5d335509ff353774eefec8f82fa2a2a975e800139702232d8be3dbe6b9
+          args: ["mb", "--ignore-existing", "lake/raw"]
+          env: &mc-env
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: MINIO_ROOT_PASSWORD
+            - name: SPARK_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: SPARK_S3_ACCESS_KEY
+            - name: SPARK_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: SPARK_S3_SECRET_KEY
+            - name: MC_HOST_lake
+              value: http://$(MINIO_ROOT_USER):$(MINIO_ROOT_PASSWORD)@minio.ingest.svc.cluster.local:9000
+            - name: MC_CONFIG_DIR
+              value: /tmp/mc
+          securityContext: &sc
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources: &res
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts: &mounts
+            - name: tmp
+              mountPath: /tmp
+            - name: seed
+              mountPath: /seed
+            - name: policy
+              mountPath: /policy
+        - name: upload
+          image: *mc
+          args: ["cp", "/seed/sales.csv", "lake/raw/sales.csv"]
+          env: *mc-env
+          securityContext: *sc
+          resources: *res
+          volumeMounts: *mounts
+        - name: add-spark-user
+          image: *mc
+          args: ["admin", "user", "add", "lake", "$(SPARK_S3_ACCESS_KEY)", "$(SPARK_S3_SECRET_KEY)"]
+          env: *mc-env
+          securityContext: *sc
+          resources: *res
+          volumeMounts: *mounts
+        - name: create-policy
+          image: *mc
+          args: ["admin", "policy", "create", "lake", "raw-read", "/policy/raw-read.json"]
+          env: *mc-env
+          securityContext: *sc
+          resources: *res
+          volumeMounts: *mounts
+      containers:
+        - name: attach-policy
+          image: *mc
+          args: ["admin", "policy", "attach", "lake", "raw-read", "--user", "$(SPARK_S3_ACCESS_KEY)"]
+          env: *mc-env
+          securityContext: *sc
+          resources: *res
+          volumeMounts: *mounts
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: seed
+          configMap:
+            name: sales-csv
+        - name: policy
+          configMap:
+            name: minio-policy

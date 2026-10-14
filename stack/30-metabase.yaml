@@ -1,0 +1,171 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metabase
+  namespace: bi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metabase
+  template:
+    metadata:
+      labels:
+        app: metabase
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000
+        runAsGroup: 2000
+        fsGroup: 2000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: wait-for-postgres
+          image: docker.io/library/postgres:16.10@sha256:21f6013073bc6b92830a2129570e2f5ec42a6c734b5a985a41e83aa58f54c3c1
+          command: ["sh", "-c", "until pg_isready -U postgres -h postgres.warehouse.svc.cluster.local; do sleep 2; done"]
+          securityContext: &sc
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      containers:
+        - name: metabase
+          image: docker.io/metabase/metabase:v0.56.9@sha256:1f6bdca9d48c767e2109468bbb79655da13c42812da19bdf4b98fa4d9d0728df
+          env:
+            - name: MB_ANON_TRACKING_ENABLED
+              value: "false"
+            - name: MB_CHECK_FOR_UPDATES
+              value: "false"
+            - name: MB_PLUGINS_DIR
+              value: /plugins
+            - name: MB_DB_TYPE
+              value: postgres
+            - name: MB_DB_HOST
+              value: postgres.warehouse.svc.cluster.local
+            - name: MB_DB_PORT
+              value: "5432"
+            - name: MB_DB_DBNAME
+              value: metabase
+            - name: MB_DB_USER
+              value: metabase_app
+            - name: MB_DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: metabase-credentials
+                  key: MB_DB_PASS
+            - name: MB_ENCRYPTION_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: metabase-credentials
+                  key: MB_ENCRYPTION_SECRET_KEY
+          ports:
+            - containerPort: 3000
+          securityContext: *sc
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: plugins
+              mountPath: /plugins
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: plugins
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metabase
+  namespace: bi
+spec:
+  type: ClusterIP
+  selector:
+    app: metabase
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: metabase-setup
+  namespace: bi
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app: metabase-setup
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 102
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: setup
+          image: docker.io/curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6
+          command: ["sh", "/scripts/setup.sh"]
+          env:
+            - name: MB_ADMIN_EMAIL
+              value: admin@bhd.local
+            - name: MB_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: metabase-credentials
+                  key: MB_ADMIN_PASSWORD
+            - name: PG_HOST
+              value: postgres.warehouse.svc.cluster.local
+            - name: PG_DB
+              value: warehouse
+            - name: PG_USER
+              value: metabase_ro
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: metabase-credentials
+                  key: WAREHOUSE_RO_PASSWORD
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: metabase-setup

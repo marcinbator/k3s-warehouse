@@ -1,0 +1,30 @@
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: restrict-images
+spec:
+  validationActions: ["Deny"]
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: ["warehouse", "ingest", "bi", "processing"]
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  variables:
+    - name: images
+      expression: >-
+        object.spec.containers.map(c, c.image) +
+        (has(object.spec.initContainers) ? object.spec.initContainers.map(c, c.image) : [])
+  validations:
+    - expression: >-
+        variables.images.all(i,
+          i.startsWith('ghcr.io/marcinbator/k3s-warehouse/') ||
+          ((i.startsWith('docker.io/') || i.startsWith('cgr.dev/chainguard/')) && i.contains('@sha256:')))
+      message: "Dozwolone obrazy: ghcr.io/marcinbator/k3s-warehouse/* albo docker.io i cgr.dev/chainguard przypiete digestem"
+    - expression: "variables.images.all(i, !i.contains(':latest'))"
+      message: "Tag latest jest zabroniony"

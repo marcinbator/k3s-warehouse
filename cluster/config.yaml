@@ -1,0 +1,18 @@
+data-dir: /var/lib/rancher/k3s-hardened
+write-kubeconfig-mode: "0600"
+secrets-encryption: true
+
+kube-apiserver-arg:
+  - anonymous-auth=false
+  - audit-policy-file=/etc/rancher/k3s/audit-policy.yaml
+  - audit-log-path=/var/lib/rancher/k3s-hardened/server/logs/audit.log
+  - audit-log-maxage=7
+  - audit-log-maxbackup=3
+  - audit-log-maxsize=100
+
+kubelet-arg:
+  - anonymous-auth=false
+  - authorization-mode=Webhook
+
+disable:
+  - traefik

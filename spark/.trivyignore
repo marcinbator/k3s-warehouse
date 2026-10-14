@@ -1,0 +1,10 @@
+# Zaakceptowane ryzyko: podatnosci CRITICAL w bibliotekach dostarczanych ze Sparkiem 3.5.7,
+# bez poprawki mozliwej bez przebudowy Sparka. Przeglad przy kazdej zmianie wersji Sparka.
+
+# netty-handler (Spark i aws-java-sdk-bundle): obejscie routingu SNI w serwerze TLS netty.
+# Zadanie nie uruchamia serwera TLS na netty (RPC Sparka bez TLS w sieci podow, S3 przez klienta HTTP).
+CVE-2026-75595
+
+# avro 1.7.7 w hadoop-client-runtime: RCE przy parsowaniu schematu Avro.
+# Zadanie czyta wylacznie CSV z MinIO, nie parsuje schematow Avro.
+CVE-2024-47561

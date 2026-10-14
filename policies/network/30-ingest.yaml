@@ -1,0 +1,43 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: minio-ingress
+  namespace: ingest
+spec:
+  podSelector:
+    matchLabels:
+      app: minio
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: processing
+          podSelector:
+            matchLabels:
+              app: sales-etl
+        - podSelector:
+            matchLabels:
+              app: minio-seed
+      ports:
+        - protocol: TCP
+          port: 9000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: minio-seed-egress
+  namespace: ingest
+spec:
+  podSelector:
+    matchLabels:
+      app: minio-seed
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+      ports:
+        - protocol: TCP
+          port: 9000

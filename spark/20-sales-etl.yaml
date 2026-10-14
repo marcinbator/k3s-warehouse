@@ -1,0 +1,116 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sales-etl
+  namespace: processing
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: sales-etl
+            spark-role: driver
+        spec:
+          serviceAccountName: spark
+          automountServiceAccountToken: true
+          imagePullSecrets:
+            - name: ghcr-pull
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 185
+            runAsGroup: 185
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: driver
+              image: ghcr.io/marcinbator/k3s-warehouse/spark-etl:0.2.0
+              imagePullPolicy: IfNotPresent
+              command:
+                - /opt/spark/bin/spark-submit
+                - --master=k8s://https://kubernetes.default.svc
+                - --deploy-mode=client
+                - --name=sales-etl
+                - --conf=spark.kubernetes.namespace=processing
+                - --conf=spark.kubernetes.container.image=ghcr.io/marcinbator/k3s-warehouse/spark-etl:0.2.0
+                - --conf=spark.kubernetes.container.image.pullPolicy=IfNotPresent
+                - --conf=spark.kubernetes.container.image.pullSecrets=ghcr-pull
+                - --conf=spark.kubernetes.driver.pod.name=$(POD_NAME)
+                - --conf=spark.kubernetes.executor.podTemplateFile=/opt/spark/pod-template/executor-template.yaml
+                - --conf=spark.kubernetes.executor.podTemplateContainerName=executor
+                - --conf=spark.kubernetes.executor.request.cores=250m
+                - --conf=spark.kubernetes.executor.limit.cores=1
+                - --conf=spark.driver.host=$(POD_IP)
+                - --conf=spark.driver.bindAddress=0.0.0.0
+                - --conf=spark.driver.port=7078
+                - --conf=spark.blockManager.port=7079
+                - --conf=spark.executor.instances=1
+                - --conf=spark.executor.cores=1
+                - --conf=spark.executor.memory=512m
+                - --conf=spark.local.dir=/tmp
+                - --conf=spark.authenticate=true
+                - --conf=spark.network.crypto.enabled=true
+                - --conf=spark.ui.killEnabled=false
+                - /opt/spark/work-dir/job.py
+              env:
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: POD_IP
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: status.podIP
+                - name: S3_ENDPOINT
+                  value: http://minio.ingest.svc.cluster.local:9000
+                - name: S3_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: spark-credentials
+                      key: S3_ACCESS_KEY
+                - name: S3_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: spark-credentials
+                      key: S3_SECRET_KEY
+                - name: PG_URL
+                  value: jdbc:postgresql://postgres.warehouse.svc.cluster.local:5432/warehouse
+                - name: PG_USER
+                  value: spark_etl
+                - name: PG_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: spark-credentials
+                      key: PG_PASSWORD
+              ports:
+                - name: ui
+                  containerPort: 4040
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 1Gi
+                limits:
+                  cpu: "1"
+                  memory: 1536Mi
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+                - name: pod-template
+                  mountPath: /opt/spark/pod-template
+          volumes:
+            - name: tmp
+              emptyDir: {}
+            - name: pod-template
+              configMap:
+                name: spark-executor-template

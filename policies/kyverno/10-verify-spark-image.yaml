@@ -1,0 +1,37 @@
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: verify-spark-image
+spec:
+  validationActions: ["Deny"]
+  failurePolicy: Fail
+  webhookConfiguration:
+    timeoutSeconds: 30
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchImageReferences:
+    - glob: "ghcr.io/marcinbator/k3s-warehouse/*"
+  validationConfigurations:
+    mutateDigest: true
+    verifyDigest: true
+    required: true
+  credentials:
+    secrets:
+      - ghcr-pull
+  attestors:
+    - name: github
+      cosign:
+        keyless:
+          identities:
+            - subject: "https://github.com/marcinbator/k3s-warehouse/.github/workflows/spark-image.yml@refs/heads/main"
+              issuer: "https://token.actions.githubusercontent.com"
+        ctlog:
+          url: "https://rekor.sigstore.dev"
+  validations:
+    - expression: >-
+        images.containers.map(image, verifyImageSignatures(image, [attestors.github])).all(e, e > 0)
+      message: "Obraz nie jest podpisany przez workflow spark-image.yml z repozytorium marcinbator/k3s-warehouse"
