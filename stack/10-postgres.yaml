@@ -20,7 +20,6 @@ spec:
         runAsUser: 999
         runAsGroup: 999
         fsGroup: 999
-        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -57,7 +56,6 @@ spec:
                   key: METABASE_APP_PASSWORD
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           resources:
@@ -76,18 +74,10 @@ spec:
               mountPath: /var/lib/postgresql/data
             - name: init
               mountPath: /docker-entrypoint-initdb.d
-            - name: run
-              mountPath: /var/run/postgresql
-            - name: tmp
-              mountPath: /tmp
       volumes:
         - name: init
           configMap:
             name: postgres-init
-        - name: run
-          emptyDir: {}
-        - name: tmp
-          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: data

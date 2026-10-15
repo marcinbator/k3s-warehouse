@@ -25,6 +25,6 @@ spec:
         variables.images.all(i,
           i.startsWith('ghcr.io/marcinbator/k3s-warehouse/') ||
           ((i.startsWith('docker.io/') || i.startsWith('cgr.dev/chainguard/')) && i.contains('@sha256:')))
-      message: "Dozwolone obrazy: ghcr.io/marcinbator/k3s-warehouse/* albo docker.io i cgr.dev/chainguard przypiete digestem"
+      message: "Dozwolone obrazy: ghcr.io/marcinbator/k3s-warehouse/* albo docker.io i cgr.dev/chainguard"
     - expression: "variables.images.all(i, !i.contains(':latest'))"
       message: "Tag latest jest zabroniony"

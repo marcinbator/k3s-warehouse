@@ -19,9 +19,6 @@ spec:
     mutateDigest: true
     verifyDigest: true
     required: true
-  credentials:
-    secrets:
-      - ghcr-pull
   attestors:
     - name: github
       cosign:

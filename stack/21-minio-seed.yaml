@@ -49,7 +49,6 @@ spec:
               value: /tmp/mc
           securityContext: &sc
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           resources: &res
@@ -60,8 +59,6 @@ spec:
               cpu: 500m
               memory: 256Mi
           volumeMounts: &mounts
-            - name: tmp
-              mountPath: /tmp
             - name: seed
               mountPath: /seed
             - name: policy
@@ -96,8 +93,6 @@ spec:
           resources: *res
           volumeMounts: *mounts
       volumes:
-        - name: tmp
-          emptyDir: {}
         - name: seed
           configMap:
             name: sales-csv

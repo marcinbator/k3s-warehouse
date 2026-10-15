@@ -29,17 +29,8 @@ Tworzy `stack/secrets/*.env` i `spark/secrets/processing.env` (poza gitem). Nie 
 helm install kyverno kyverno --repo https://kyverno.github.io/kyverno --version 3.9.1 \
   --namespace kyverno --create-namespace --wait
 
-kubectl apply -f spark/00-namespace.yaml
-for ns in processing kyverno; do
-  kubectl -n $ns create secret docker-registry ghcr-pull \
-    --docker-server=ghcr.io --docker-username=marcinbator \
-    --docker-password="$(cat GH_PAT.txt)"
-done
-
 kubectl apply -k policies/kyverno/
 ```
-
-`GH_PAT.txt`: token GitHub z uprawnieniem tylko `read:packages` (plik poza gitem).
 
 ## 4. Stack, Spark, polityki sieciowe
 

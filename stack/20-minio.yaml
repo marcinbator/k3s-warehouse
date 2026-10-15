@@ -32,13 +32,12 @@ spec:
         runAsUser: 65532
         runAsGroup: 65532
         fsGroup: 65532
-        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: minio
           image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
-          args: ["server", "/data", "--console-address", ":9001", "--certs-dir", "/tmp/certs"]
+          args: ["server", "/data", "--console-address", ":9001"]
           env:
             - name: MINIO_ROOT_USER
               valueFrom:
@@ -57,7 +56,6 @@ spec:
               containerPort: 9001
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           resources:
@@ -75,14 +73,10 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
-            - name: tmp
-              mountPath: /tmp
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: minio-data
-        - name: tmp
-          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

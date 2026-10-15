@@ -20,8 +20,6 @@ spec:
         spec:
           serviceAccountName: spark
           automountServiceAccountToken: true
-          imagePullSecrets:
-            - name: ghcr-pull
           restartPolicy: Never
           securityContext:
             runAsNonRoot: true
@@ -41,7 +39,6 @@ spec:
                 - --conf=spark.kubernetes.namespace=processing
                 - --conf=spark.kubernetes.container.image=ghcr.io/marcinbator/k3s-warehouse/spark-etl:0.2.0
                 - --conf=spark.kubernetes.container.image.pullPolicy=IfNotPresent
-                - --conf=spark.kubernetes.container.image.pullSecrets=ghcr-pull
                 - --conf=spark.kubernetes.driver.pod.name=$(POD_NAME)
                 - --conf=spark.kubernetes.executor.podTemplateFile=/opt/spark/pod-template/executor-template.yaml
                 - --conf=spark.kubernetes.executor.podTemplateContainerName=executor
@@ -54,7 +51,6 @@ spec:
                 - --conf=spark.executor.instances=1
                 - --conf=spark.executor.cores=1
                 - --conf=spark.executor.memory=512m
-                - --conf=spark.local.dir=/var/spark-local
                 - --conf=spark.authenticate=true
                 - --conf=spark.network.crypto.enabled=true
                 - --conf=spark.ui.killEnabled=false
@@ -94,7 +90,6 @@ spec:
                   containerPort: 4040
               securityContext:
                 allowPrivilegeEscalation: false
-                readOnlyRootFilesystem: true
                 capabilities:
                   drop: ["ALL"]
               resources:
@@ -105,17 +100,9 @@ spec:
                   cpu: "1"
                   memory: 1536Mi
               volumeMounts:
-                - name: tmp
-                  mountPath: /tmp
-                - name: spark-local
-                  mountPath: /var/spark-local
                 - name: pod-template
                   mountPath: /opt/spark/pod-template
           volumes:
-            - name: tmp
-              emptyDir: {}
-            - name: spark-local
-              emptyDir: {}
             - name: pod-template
               configMap:
                 name: spark-executor-template

@@ -15,12 +15,5 @@ spec:
     - name: executor
       securityContext:
         allowPrivilegeEscalation: false
-        readOnlyRootFilesystem: true
         capabilities:
           drop: ["ALL"]
-      volumeMounts:
-        - name: tmp
-          mountPath: /tmp
-  volumes:
-    - name: tmp
-      emptyDir: {}
