@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Generuje losowe hasla do plikow *.env czytanych przez secretGenerator w stack/ i spark/.
-# Nie nadpisuje istniejacych plikow: Postgres zapisuje hasla przy pierwszej inicjalizacji.
 set -euo pipefail
 cd "$(dirname "$0")"
 
