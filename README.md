@@ -1,8 +1,6 @@
 # k3s-warehouse: wariant utwardzony
 
-Wszystkie komendy z katalogu repozytorium. Wariant podatny (`insecure/`) i utwardzony działają na tej samej instalacji k3s, ale w osobnych katalogach stanu, więc nie naraz.
-
-## 1. Klaster (sudo, przy każdym przełączeniu wariantu)
+## 1. Klaster
 
 ```bash
 sudo k3s-killall.sh
@@ -20,8 +18,6 @@ export KUBECONFIG=~/.kube/config
 ```bash
 bash generate-secrets.sh
 ```
-
-Tworzy `stack/secrets/*.env` i `spark/secrets/processing.env` (poza gitem). Nie nadpisuje istniejących plików.
 
 ## 3. Kyverno (raz na klaster)
 
@@ -51,12 +47,12 @@ kubectl -n processing get jobs -w
 
 ## Dostęp (port-forward, działa też z Windows przez localhost)
 
-| Usługa | Komenda | Adres |
-|---|---|---|
-| Metabase | `kubectl -n bi port-forward svc/metabase 3000:3000` | http://localhost:3000 |
-| MinIO konsola | `kubectl -n ingest port-forward svc/minio 9001:9001` | http://localhost:9001 |
-| PostgreSQL | `kubectl -n warehouse port-forward svc/postgres 5432:5432` | localhost:5432 |
-| Spark UI | `kubectl -n processing port-forward svc/spark-ui 4040:4040` | tylko w trakcie ETL |
+| Usługa        | Komenda                                                     | Adres                 |
+| ------------- | ----------------------------------------------------------- | --------------------- |
+| Metabase      | `kubectl -n bi port-forward svc/metabase 3000:3000`         | http://localhost:3000 |
+| MinIO konsola | `kubectl -n ingest port-forward svc/minio 9001:9001`        | http://localhost:9001 |
+| PostgreSQL    | `kubectl -n warehouse port-forward svc/postgres 5432:5432`  | localhost:5432        |
+| Spark UI      | `kubectl -n processing port-forward svc/spark-ui 4040:4040` | tylko w trakcie ETL   |
 
 Login Metabase `admin@bhd.local`, hasło: `grep MB_ADMIN_PASSWORD stack/secrets/bi.env`.
 
@@ -74,3 +70,11 @@ kubectl delete -k policies/network/
 kubectl delete -k spark/
 kubectl delete -k stack/
 ```
+
+## Reset przed demo
+
+```bash
+bash reset.sh
+```
+
+Usuwa namespace'y stacka i Sparka (razem z PVC Postgresa i MinIO), polityki i całe Kyverno (helm, webhooki, CRD) oraz pliki `*.env` z hasłami. Potem od nowa kroki 2-4.
