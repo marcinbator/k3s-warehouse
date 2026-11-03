@@ -20,5 +20,6 @@ SESSION=$(curl -sf -X POST "$MB/api/setup" -H "$JSON" -d "{
 
 curl -sf -X POST "$MB/api/database" -H "$JSON" -H "X-Metabase-Session: $SESSION" -d "{
   \"engine\": \"postgres\", \"name\": \"Hurtownia\",
-  \"details\": {\"host\": \"$PG_HOST\", \"port\": 5432, \"dbname\": \"$PG_DB\", \"user\": \"$PG_USER\", \"password\": \"$PG_PASSWORD\"}
+  \"details\": {\"host\": \"$PG_HOST\", \"port\": 5432, \"dbname\": \"$PG_DB\", \"user\": \"$PG_USER\", \"password\": \"$PG_PASSWORD\",
+              \"ssl\": true, \"ssl-mode\": \"require\"}
 }"

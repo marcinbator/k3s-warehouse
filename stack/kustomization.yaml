@@ -16,6 +16,10 @@ configMapGenerator:
     namespace: warehouse
     files:
       - postgres/init.sh
+  - name: postgres-hba
+    namespace: warehouse
+    files:
+      - postgres/pg_hba.conf
   - name: sales-csv
     namespace: ingest
     files:
@@ -34,10 +38,21 @@ secretGenerator:
     namespace: warehouse
     envs:
       - secrets/warehouse.env
+  - name: postgres-tls
+    namespace: warehouse
+    files:
+      - tls.crt=secrets/postgres-tls.crt
+      - tls.key=secrets/postgres-tls.key
   - name: minio-credentials
     namespace: ingest
     envs:
       - secrets/ingest.env
+  - name: minio-tls
+    namespace: ingest
+    files:
+      - tls.crt=secrets/minio-tls.crt
+      - tls.key=secrets/minio-tls.key
+      - ca.crt=secrets/ca.crt
   - name: metabase-credentials
     namespace: bi
     envs:

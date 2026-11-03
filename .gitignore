@@ -1,3 +1,6 @@
 *.env
+*.crt
+*.key
+*.p12
 GH_PAT.txt
 audit/

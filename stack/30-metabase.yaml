@@ -27,6 +27,7 @@ spec:
           command: ["sh", "-c", "until pg_isready -U postgres -h postgres.warehouse.svc.cluster.local; do sleep 2; done"]
           securityContext: &sc
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           resources:
@@ -48,12 +49,8 @@ spec:
               value: /tmp/plugins
             - name: MB_DB_TYPE
               value: postgres
-            - name: MB_DB_HOST
-              value: postgres.warehouse.svc.cluster.local
-            - name: MB_DB_PORT
-              value: "5432"
-            - name: MB_DB_DBNAME
-              value: metabase
+            - name: MB_DB_CONNECTION_URI
+              value: postgres://postgres.warehouse.svc.cluster.local:5432/metabase?sslmode=require
             - name: MB_DB_USER
               value: metabase_app
             - name: MB_DB_PASS
@@ -82,6 +79,12 @@ spec:
               port: 3000
             initialDelaySeconds: 30
             periodSeconds: 10
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -141,6 +144,7 @@ spec:
                   key: WAREHOUSE_RO_PASSWORD
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           resources:

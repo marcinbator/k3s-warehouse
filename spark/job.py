@@ -38,7 +38,7 @@ spark = (
     .config("spark.hadoop.fs.s3a.access.key", S3_ACCESS_KEY)
     .config("spark.hadoop.fs.s3a.secret.key", S3_SECRET_KEY)
     .config("spark.hadoop.fs.s3a.path.style.access", "true")
-    .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
+    .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "true")
     .config("spark.hadoop.fs.s3a.aws.credentials.provider",
             "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
     .getOrCreate()

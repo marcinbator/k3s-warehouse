@@ -14,5 +14,5 @@ kubectl get validatingwebhookconfigurations,mutatingwebhookconfigurations -o nam
 kubectl get crd -o name | { grep -E '\.(kyverno\.io|wgpolicyk8s\.io)$' || true; } | xargs -r kubectl delete
 kubectl delete ns kyverno --ignore-not-found --wait
 
-rm -f stack/secrets/*.env spark/secrets/*.env
+rm -f stack/secrets/*.env spark/secrets/*.env stack/secrets/*.crt stack/secrets/*.key spark/secrets/*.crt spark/secrets/*.p12
 

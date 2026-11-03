@@ -2,7 +2,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-files=(stack/secrets/warehouse.env stack/secrets/ingest.env stack/secrets/bi.env spark/secrets/processing.env)
+files=(stack/secrets/warehouse.env stack/secrets/ingest.env stack/secrets/bi.env spark/secrets/processing.env
+       stack/secrets/ca.crt stack/secrets/postgres-tls.crt stack/secrets/postgres-tls.key
+       stack/secrets/minio-tls.crt stack/secrets/minio-tls.key spark/secrets/ca.crt spark/secrets/truststore.p12)
 for f in "${files[@]}"; do
   if [ -e "$f" ]; then
     echo "$f juz istnieje, przerywam" >&2
@@ -49,5 +51,24 @@ S3_ACCESS_KEY=spark-etl
 S3_SECRET_KEY=$S3_SPARK
 PG_PASSWORD=$PG_SPARK
 EOF
+
+CA_DIR=$(mktemp -d)
+trap 'rm -rf "$CA_DIR"' EXIT
+ec() { openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes "$@" 2>/dev/null; }
+ec -x509 -days 365 -subj /CN=k3s-warehouse-ca -keyout "$CA_DIR/ca.key" -out stack/secrets/ca.crt
+
+cert() {
+  ec -subj "/CN=$2" -keyout "stack/secrets/$1.key" -out "$CA_DIR/$1.csr"
+  openssl x509 -req -in "$CA_DIR/$1.csr" -CA stack/secrets/ca.crt -CAkey "$CA_DIR/ca.key" -days 365 \
+    -extfile <(printf 'subjectAltName=%s\nextendedKeyUsage=serverAuth\n' "$3") -out "stack/secrets/$1.crt" 2>/dev/null
+}
+cert postgres-tls postgres.warehouse.svc.cluster.local \
+  DNS:postgres.warehouse.svc.cluster.local,DNS:postgres.warehouse.svc,DNS:postgres,DNS:localhost
+cert minio-tls minio.ingest.svc.cluster.local \
+  DNS:minio.ingest.svc.cluster.local,DNS:minio.ingest.svc,DNS:minio,DNS:localhost,IP:127.0.0.1
+
+cp stack/secrets/ca.crt spark/secrets/ca.crt
+openssl pkcs12 -export -nokeys -in stack/secrets/ca.crt -jdktrust anyExtendedKeyUsage \
+  -passout pass:changeit -out spark/secrets/truststore.p12
 
 echo "Wygenerowano: ${files[*]}"

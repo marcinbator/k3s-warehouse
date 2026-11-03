@@ -15,5 +15,17 @@ spec:
     - name: executor
       securityContext:
         allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
         capabilities:
           drop: ["ALL"]
+      volumeMounts:
+        - name: tls
+          mountPath: /opt/spark/tls
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tls
+      configMap:
+        name: spark-tls
+    - name: tmp
+      emptyDir: {}

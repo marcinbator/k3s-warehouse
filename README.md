@@ -13,7 +13,7 @@ mkdir -p ~/.kube && sudo install -m 600 -o $USER -g $USER /etc/rancher/k3s/k3s.y
 export KUBECONFIG=~/.kube/config
 ```
 
-## 2. Hasła (raz)
+## 2. Hasła i certyfikaty TLS (raz)
 
 ```bash
 bash generate-secrets.sh
@@ -36,7 +36,7 @@ kubectl apply -k spark/
 kubectl apply -k policies/network/
 ```
 
-Obraz Sparka buduje, skanuje, podpisuje i publikuje workflow `.github/workflows/spark-image.yml` po pushu zmian w `spark/`.
+Obraz Sparka buduje, skanuje, podpisuje i publikuje workflow `.github/workflows/spark-image.yml` po pushu zmian w `spark/`. Wersja obrazu w `spark/VERSION` musi się zgadzać z tagiem w `spark/20-sales-etl.yaml`.
 
 ETL uruchamia się co 10 minut. Ręcznie:
 
@@ -50,7 +50,7 @@ kubectl -n processing get jobs -w
 | Usługa        | Komenda                                                     | Adres                 |
 | ------------- | ----------------------------------------------------------- | --------------------- |
 | Metabase      | `kubectl -n bi port-forward svc/metabase 3000:3000`         | http://localhost:3000 |
-| MinIO konsola | `kubectl -n ingest port-forward svc/minio 9001:9001`        | http://localhost:9001 |
+| MinIO konsola | `kubectl -n ingest port-forward svc/minio 9001:9001`        | https://localhost:9001 |
 | PostgreSQL    | `kubectl -n warehouse port-forward svc/postgres 5432:5432`  | localhost:5432        |
 | Spark UI      | `kubectl -n processing port-forward svc/spark-ui 4040:4040` | tylko w trakcie ETL   |
 

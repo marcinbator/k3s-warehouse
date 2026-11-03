@@ -37,7 +37,7 @@ spec:
       containers:
         - name: minio
           image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
-          args: ["server", "/data", "--console-address", ":9001"]
+          args: ["server", "/data", "--console-address", ":9001", "--certs-dir", "/certs"]
           env:
             - name: MINIO_ROOT_USER
               valueFrom:
@@ -56,6 +56,7 @@ spec:
               containerPort: 9001
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           resources:
@@ -69,14 +70,32 @@ spec:
             httpGet:
               path: /minio/health/ready
               port: 9000
+              scheme: HTTPS
             periodSeconds: 5
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: tls
+              mountPath: /certs
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: minio-data
+        - name: tls
+          secret:
+            secretName: minio-tls
+            defaultMode: 0440
+            items:
+              - key: tls.crt
+                path: public.crt
+              - key: tls.key
+                path: private.key
+              - key: ca.crt
+                path: CAs/ca.crt
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
